@@ -22,7 +22,7 @@ public class TherapistsPane extends VBox {
         this.user = user;
         setPadding(new Insets(20));
         setSpacing(10);
-        getStyleClass().add("form");
+        getStyleClass().add("content-pane");
 
         tableView = new TableView<>();
         tableView.getStyleClass().add("table-view");

@@ -21,8 +21,11 @@ public class PaymentsPane extends VBox {
         this.user = user;
         setPadding(new Insets(20));
         setSpacing(10);
+        getStyleClass().add("content-pane");
 
         tableView = new TableView<>();
+        tableView.getStyleClass().add("table-view");
+
         TableColumn<Payment, Integer> idColumn = new TableColumn<>("ID");
         idColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleIntegerProperty(cellData.getValue().getId()).asObject());
         TableColumn<Payment, String> clientColumn = new TableColumn<>("Klijent");
@@ -37,7 +40,9 @@ public class PaymentsPane extends VBox {
         tableView.getColumns().addAll(idColumn, clientColumn, amountColumn, dateColumn, statusColumn);
 
         Button refreshButton = new Button("Osveži");
+        refreshButton.getStyleClass().add("button");
         Button addPaymentButton = new Button("Dodaj plaćanje");
+        addPaymentButton.getStyleClass().add("button");
 
         refreshButton.setOnAction(e -> loadPayments());
         addPaymentButton.setOnAction(e -> showAddPaymentForm());
@@ -79,15 +84,23 @@ public class PaymentsPane extends VBox {
         form.setPadding(new Insets(20));
         form.setHgap(10);
         form.setVgap(10);
+        form.getStyleClass().add("form");
 
         Label sessionLabel = new Label("Sesija:");
+        sessionLabel.getStyleClass().add("label");
         ComboBox<String> sessionCombo = new ComboBox<>();
+        sessionCombo.getStyleClass().add("combo-box");
         Label amountLabel = new Label("Iznos:");
+        amountLabel.getStyleClass().add("label");
         TextField amountField = new TextField();
+        amountField.getStyleClass().add("text-field");
         Label methodLabel = new Label("Način plaćanja:");
+        methodLabel.getStyleClass().add("label");
         ChoiceBox<String> methodChoice = new ChoiceBox<>();
         methodChoice.getItems().addAll("Gotovina", "Kartica");
+        methodChoice.getStyleClass().add("combo-box");
         Button submitButton = new Button("Potvrdi");
+        submitButton.getStyleClass().add("button");
 
         form.add(sessionLabel, 0, 0);
         form.add(sessionCombo, 1, 0);
@@ -133,6 +146,7 @@ public class PaymentsPane extends VBox {
         });
 
         Scene scene = new Scene(form, 400, 300);
+        scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
         dialog.setScene(scene);
         dialog.show();
     }

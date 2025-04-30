@@ -20,8 +20,11 @@ public class ClientsPane extends VBox {
         this.user = user;
         setPadding(new Insets(20));
         setSpacing(10);
+        getStyleClass().add("content-pane");
 
         tableView = new TableView<>();
+        tableView.getStyleClass().add("table-view");
+
         TableColumn<Client, Integer> idColumn = new TableColumn<>("ID");
         idColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleIntegerProperty(cellData.getValue().getId()).asObject());
         TableColumn<Client, String> nameColumn = new TableColumn<>("Ime");
@@ -34,7 +37,9 @@ public class ClientsPane extends VBox {
         tableView.getColumns().addAll(idColumn, nameColumn, surnameColumn, emailColumn);
 
         Button refreshButton = new Button("Osveži");
+        refreshButton.getStyleClass().add("button");
         Button addClientButton = new Button("Dodaj klijenta");
+        addClientButton.getStyleClass().add("button");
 
         refreshButton.setOnAction(e -> loadClients());
         addClientButton.setOnAction(e -> showAddClientForm());
@@ -70,25 +75,43 @@ public class ClientsPane extends VBox {
         form.setPadding(new Insets(20));
         form.setHgap(10);
         form.setVgap(10);
+        form.getStyleClass().add("form");
 
         Label nameLabel = new Label("Ime:");
+        nameLabel.getStyleClass().add("label");
         TextField nameField = new TextField();
+        nameField.getStyleClass().add("text-field");
         Label surnameLabel = new Label("Prezime:");
+        surnameLabel.getStyleClass().add("label");
         TextField surnameField = new TextField();
+        surnameField.getStyleClass().add("text-field");
         Label birthDateLabel = new Label("Datum rođenja:");
+        birthDateLabel.getStyleClass().add("label");
         DatePicker birthDatePicker = new DatePicker();
+        birthDatePicker.getStyleClass().add("date-picker");
         Label genderLabel = new Label("Pol:");
+        genderLabel.getStyleClass().add("label");
         ChoiceBox<String> genderChoice = new ChoiceBox<>();
         genderChoice.getItems().addAll("M", "Ž");
+        genderChoice.getStyleClass().add("combo-box");
         Label emailLabel = new Label("Email:");
+        emailLabel.getStyleClass().add("label");
         TextField emailField = new TextField();
+        emailField.getStyleClass().add("text-field");
         Label phoneLabel = new Label("Telefon:");
+        phoneLabel.getStyleClass().add("label");
         TextField phoneField = new TextField();
+        phoneField.getStyleClass().add("text-field");
         Label experienceLabel = new Label("Prethodna iskustva:");
+        experienceLabel.getStyleClass().add("label");
         CheckBox experienceCheck = new CheckBox();
+        experienceCheck.getStyleClass().add("check-box");
         Label problemLabel = new Label("Opis problema:");
+        problemLabel.getStyleClass().add("label");
         TextArea problemArea = new TextArea();
+        problemArea.getStyleClass().add("text-area");
         Button submitButton = new Button("Potvrdi");
+        submitButton.getStyleClass().add("button");
 
         form.add(nameLabel, 0, 0);
         form.add(nameField, 1, 0);
@@ -131,6 +154,7 @@ public class ClientsPane extends VBox {
         });
 
         Scene scene = new Scene(form, 400, 500);
+        scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
         dialog.setScene(scene);
         dialog.show();
     }

@@ -2,11 +2,7 @@ package pog.Controlleri;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import pog.DatabaseUtil;
@@ -29,11 +25,9 @@ public class LoginController {
         view.setPadding(new Insets(40));
         view.getStyleClass().add("content-pane");
 
-        // Large welcome message
-        Label welcomeLabel = new Label("DOBRODOŠAO PSIHOTERAPEUTU!");
+        Label welcomeLabel = new Label("DOBRODOŠAO!");
         welcomeLabel.getStyleClass().add("welcome-label");
 
-        // Login form
         GridPane loginForm = new GridPane();
         loginForm.setAlignment(Pos.CENTER);
         loginForm.setHgap(10);
@@ -44,8 +38,10 @@ public class LoginController {
         Label emailLabel = new Label("Email:");
         emailLabel.getStyleClass().add("label");
         TextField emailField = new TextField();
-        emailField.setPromptText("Unesite vaš email");
+        emailField.setPromptText("Ovde ide mejl ");
         emailField.getStyleClass().add("text-field");
+
+        emailField.setTooltip(new Tooltip("Ovde unesi email hehe"));
 
         Button loginButton = new Button("Prijavi se");
         loginButton.getStyleClass().add("button");
@@ -57,10 +53,9 @@ public class LoginController {
         loginForm.add(loginButton, 0, 1);
         loginForm.add(registerButton, 1, 1);
 
-        // Add welcome message and login form to the main view
         view.getChildren().addAll(welcomeLabel, loginForm);
+        view.getStyleClass().addAll("content-pane", "login-background");
 
-        // Event handlers
         loginButton.setOnAction(e -> {
             String email = emailField.getText();
             User user = authenticate(email);
@@ -77,11 +72,22 @@ public class LoginController {
 
     private User authenticate(String email) {
         try (Connection conn = DatabaseUtil.getConnection()) {
-            PreparedStatement pstmt = conn.prepareStatement("SELECT id, ime, prezime, email, tip FROM Terapeut WHERE email = ?");
+            PreparedStatement pstmt = conn.prepareStatement(
+                    "SELECT t.id, t.ime, t.prezime, t.email, t.tip, f.naziv AS fakultet_naziv " +
+                            "FROM Terapeut t JOIN Fakultet f ON t.fakultet_id = f.id WHERE t.email = ?"
+            );
             pstmt.setString(1, email);
             ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
-                return new User(rs.getInt("id"), rs.getString("ime"), rs.getString("prezime"), rs.getString("email"), rs.getString("tip"));
+                User user = new User(
+                        rs.getInt("id"),
+                        rs.getString("ime"),
+                        rs.getString("prezime"),
+                        rs.getString("email"),
+                        rs.getString("tip")
+                );
+                user.setFakultetNaziv(rs.getString("fakultet_naziv"));
+                return user;
             }
         } catch (SQLException ex) {
             Alert alert = new Alert(Alert.AlertType.ERROR, "Greška pri autentikaciji: " + ex.getMessage());

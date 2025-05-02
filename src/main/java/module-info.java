@@ -5,4 +5,5 @@ module untitled1 {
     exports pog;
     exports pog.Controlleri;
     exports pog.Model;
+    exports pog.Prozori;
 }

@@ -19,7 +19,9 @@ public class ProfilePane extends VBox {
         emailLabel.getStyleClass().add("label");
         Label tipLabel = new Label("Tip: " + user.getTip());
         tipLabel.getStyleClass().add("label");
+        Label fakultetLabel = new Label("Fakultet: " + (user.getFakultetNaziv() != null ? user.getFakultetNaziv() : "Nije dostupno"));
+        fakultetLabel.getStyleClass().add("label");
 
-        getChildren().addAll(nameLabel, surnameLabel, emailLabel, tipLabel);
+        getChildren().addAll(nameLabel, surnameLabel, emailLabel, tipLabel, fakultetLabel);
     }
 }

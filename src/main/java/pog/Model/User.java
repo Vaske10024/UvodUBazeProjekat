@@ -6,6 +6,15 @@ public class User {
     private String surname;
     private String email;
     private String tip;
+    private String fakultetNaziv;
+
+    public String getFakultetNaziv() {
+        return fakultetNaziv;
+    }
+
+    public void setFakultetNaziv(String fakultetNaziv) {
+        this.fakultetNaziv = fakultetNaziv;
+    }
 
     public User(int id, String name, String surname, String email, String tip) {
         this.id = id;

@@ -4,6 +4,7 @@
     -fx-background-color: #1a1a1a;
 }
 
+
 .main-form {
     -fx-background-color: #1a1a1a;
 }
@@ -40,6 +41,7 @@
     -fx-background-color: #5a8500;
 }
 
+
 .content-pane {
     -fx-background-color: #2e2e2e;
     -fx-padding: 20px;
@@ -55,8 +57,10 @@
     -fx-padding: 20px;
     -fx-border-color: #76b900;
     -fx-border-width: 1;
-    -fx-border-radius: 5px;
+    -fx-border-radius: 10px;
+    -fx-effect: dropshadow(gaussian, #000000aa, 10, 0.3, 0, 5);
 }
+
 
 
 .table-view {
@@ -147,6 +151,11 @@
     -fx-background-color: #5a8500;
 }
 
+.login-background {
+    -fx-background-color: linear-gradient(to bottom, #1a1a1a, #2e2e2e);
+}
+
+
 
 .text-field {
     -fx-background-color: #3c3c3c;
@@ -167,6 +176,11 @@
     -fx-border-radius: 3px;
 }
 
+.text-area .content {
+    -fx-background-color: #3c3c3c;
+    -fx-text-fill: #ffffff;
+}
+
 
 .combo-box {
     -fx-background-color: #3c3c3c;
@@ -180,7 +194,6 @@
     -fx-text-fill: #ffffff;
     -fx-background-color: #3c3c3c;
 }
-
 
 .date-picker {
     -fx-background-color: #3c3c3c;
@@ -210,6 +223,7 @@
     -fx-background-color: #76b900;
 }
 
+
 .label {
     -fx-text-fill: #ffffff;
     -fx-font-size: 14px;
@@ -222,6 +236,7 @@
     -fx-font-weight: bold;
     -fx-padding: 10px;
 }
+
 
 .tab-pane {
     -fx-background-color: #2e2e2e;
@@ -237,6 +252,16 @@
 
 .tab-pane .tab-header-area .tab:selected {
     -fx-background-color: #76b900;
+}
+
+.tab-pane .tab-header-area .tab .tab-label {
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.tab-pane .tab-header-area .tab:selected .tab-label {
+    -fx-text-fill: #ffffff;
 }
 
 .tab-pane .tab-content-area {

@@ -37,8 +37,10 @@ public class TherapistsPane extends VBox {
         emailColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getEmail()));
         TableColumn<User, String> tipColumn = new TableColumn<>("Tip");
         tipColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getTip()));
+        TableColumn<User, String> fakultetColumn = new TableColumn<>("Fakultet");
+        fakultetColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getFakultetNaziv()));
 
-        tableView.getColumns().addAll(idColumn, nameColumn, surnameColumn, emailColumn, tipColumn);
+        tableView.getColumns().addAll(idColumn, nameColumn, surnameColumn, emailColumn, tipColumn, fakultetColumn);
 
         Button refreshButton = new Button("Osveži");
         refreshButton.getStyleClass().add("button");
@@ -52,16 +54,21 @@ public class TherapistsPane extends VBox {
     private void loadTherapists() {
         tableView.getItems().clear();
         try (Connection conn = DatabaseUtil.getConnection()) {
-            PreparedStatement pstmt = conn.prepareStatement("SELECT id, ime, prezime, email, tip FROM Terapeut");
+            PreparedStatement pstmt = conn.prepareStatement(
+                    "SELECT t.id, t.ime, t.prezime, t.email, t.tip, f.naziv AS fakultet_naziv " +
+                            "FROM Terapeut t JOIN Fakultet f ON t.fakultet_id = f.id"
+            );
             ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
-                tableView.getItems().add(new User(
+                User therapist = new User(
                         rs.getInt("id"),
                         rs.getString("ime"),
                         rs.getString("prezime"),
                         rs.getString("email"),
                         rs.getString("tip")
-                ));
+                );
+                therapist.setFakultetNaziv(rs.getString("fakultet_naziv"));
+                tableView.getItems().add(therapist);
             }
         } catch (SQLException ex) {
             Alert alert = new Alert(Alert.AlertType.ERROR, "Greška pri učitavanju terapeuta: " + ex.getMessage());

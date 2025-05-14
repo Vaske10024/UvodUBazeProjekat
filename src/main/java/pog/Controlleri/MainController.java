@@ -33,10 +33,12 @@ public class MainController {
         paymentsButton.getStyleClass().add("nav-button");
         Button therapistsButton = new Button("Terapeuti");
         therapistsButton.getStyleClass().add("nav-button");
+        Button dashboardButton = new Button("Dashboard");
+        dashboardButton.getStyleClass().add("nav-button");
         Button logoutButton = new Button("Odjavi se");
         logoutButton.getStyleClass().add("nav-button");
 
-        navigation.getChildren().addAll(profileButton, clientsButton, sessionsButton, paymentsButton, therapistsButton, logoutButton);
+        navigation.getChildren().addAll(profileButton, clientsButton, sessionsButton, paymentsButton, therapistsButton, dashboardButton, logoutButton);
         view.setLeft(navigation);
 
         profileButton.setOnAction(e -> showProfile());
@@ -44,6 +46,7 @@ public class MainController {
         sessionsButton.setOnAction(e -> showSessions());
         paymentsButton.setOnAction(e -> showPayments());
         therapistsButton.setOnAction(e -> showTherapists());
+        dashboardButton.setOnAction(e -> showDashboard());
         logoutButton.setOnAction(e -> app.showLoginScene());
 
         showProfile();
@@ -77,6 +80,12 @@ public class MainController {
         TherapistsPane therapistsPane = new TherapistsPane(user);
         therapistsPane.getStyleClass().add("content-pane");
         view.setCenter(therapistsPane);
+    }
+
+    private void showDashboard() {
+        DashboardPane dashboardPane = new DashboardPane(user);
+        dashboardPane.getStyleClass().add("content-pane");
+        view.setCenter(dashboardPane);
     }
 
     public BorderPane getView() {

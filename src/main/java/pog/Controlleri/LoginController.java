@@ -73,21 +73,28 @@ public class LoginController {
     private User authenticate(String email) {
         try (Connection conn = DatabaseUtil.getConnection()) {
             PreparedStatement pstmt = conn.prepareStatement(
-                    "SELECT t.id, t.ime, t.prezime, t.email, t.tip, f.naziv AS fakultet_naziv " +
-                            "FROM Terapeut t JOIN Fakultet f ON t.fakultet_id = f.id WHERE t.email = ?"
+                    "SELECT t.id, t.ime, t.prezime, t.email, t.tip, " +
+                            "COALESCE(k.stepen, t.stepen) AS stepen, " +
+                            "f.naziv AS fakultet_naziv, c.naziv AS centar_naziv " +
+                            "FROM Terapeut t " +
+                            "LEFT JOIN Kandidat k ON t.id = k.terapeut_id " +
+                            "JOIN Fakultet f ON COALESCE(k.fakultet_id, t.fakultet_id) = f.id " +
+                            "LEFT JOIN Centar_obuka c ON COALESCE(k.Centar_obuka_id, t.Centar_obuka_id) = c.id " +
+                            "WHERE t.email = ?"
             );
             pstmt.setString(1, email);
             ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
-                User user = new User(
+                return new User(
                         rs.getInt("id"),
                         rs.getString("ime"),
                         rs.getString("prezime"),
                         rs.getString("email"),
-                        rs.getString("tip")
+                        rs.getString("tip"),
+                        rs.getString("fakultet_naziv"),
+                        rs.getString("stepen"),
+                        rs.getString("centar_naziv") != null ? rs.getString("centar_naziv") : "Nije dodeljen"
                 );
-                user.setFakultetNaziv(rs.getString("fakultet_naziv"));
-                return user;
             }
         } catch (SQLException ex) {
             Alert alert = new Alert(Alert.AlertType.ERROR, "Greška pri autentikaciji: " + ex.getMessage());

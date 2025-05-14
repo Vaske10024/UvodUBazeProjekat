@@ -1,13 +1,13 @@
 package pog.Prozori;
 
-import javafx.geometry  .Insets;
+import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import pog.DatabaseUtil;
+import pog.Model.User;
 import pog.NoviPocetakApp;
 import pog.Model.Session;
-import pog.Model.User;
 
 import java.sql.*;
 import java.time.LocalDate;
@@ -65,28 +65,27 @@ public class SessionsPane extends VBox {
         clientColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getClientName()));
         TableColumn<Session, Integer> durationColumn = new TableColumn<>("Trajanje (min)");
         durationColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleIntegerProperty(cellData.getValue().getDuration()).asObject());
+        TableColumn<Session, Double> priceColumn = new TableColumn<>("Cena po satu (RSD)");
+        priceColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleDoubleProperty(cellData.getValue().getCenaPoSatu()).asObject());
 
-        table.getColumns().addAll(idColumn, dateColumn, timeColumn, clientColumn, durationColumn);
+        table.getColumns().addAll(idColumn, dateColumn, timeColumn, clientColumn, durationColumn, priceColumn);
         return table;
     }
 
     private void loadPastSessions(TableView<Session> table) {
         table.getItems().clear();
         try (Connection conn = DatabaseUtil.getConnection()) {
-            PreparedStatement pstmt = conn.prepareStatement(
-                    "SELECT s.id, s.datum, s.vreme_pocetka, CONCAT(k.ime, ' ', k.prezime) AS client_name, s.trajanje " +
-                            "FROM Sesija s JOIN Klijent k ON s.klijent_id = k.id " +
-                            "WHERE s.terapeut_id = ? AND s.datum < CURDATE()"
-            );
-            pstmt.setInt(1, user.getId());
-            ResultSet rs = pstmt.executeQuery();
+            CallableStatement cstmt = conn.prepareCall("{CALL GetPastSessionsByTherapist(?)}");
+            cstmt.setInt(1, user.getId());
+            ResultSet rs = cstmt.executeQuery();
             while (rs.next()) {
                 table.getItems().add(new Session(
                         rs.getInt("id"),
                         rs.getDate("datum").toLocalDate(),
                         rs.getTime("vreme_pocetka").toLocalTime(),
                         rs.getString("client_name"),
-                        rs.getInt("trajanje")
+                        rs.getInt("trajanje"),
+                        rs.getDouble("cena_po_satu")
                 ));
             }
         } catch (SQLException ex) {
@@ -98,20 +97,17 @@ public class SessionsPane extends VBox {
     private void loadFutureSessions(TableView<Session> table) {
         table.getItems().clear();
         try (Connection conn = DatabaseUtil.getConnection()) {
-            PreparedStatement pstmt = conn.prepareStatement(
-                    "SELECT s.id, s.datum, s.vreme_pocetka, CONCAT(k.ime, ' ', k.prezime) AS client_name, s.trajanje " +
-                            "FROM Sesija s JOIN Klijent k ON s.klijent_id = k.id " +
-                            "WHERE s.terapeut_id = ? AND s.datum >= CURDATE()"
-            );
-            pstmt.setInt(1, user.getId());
-            ResultSet rs = pstmt.executeQuery();
+            CallableStatement cstmt = conn.prepareCall("{CALL GetFutureSessionsByTherapist(?)}");
+            cstmt.setInt(1, user.getId());
+            ResultSet rs = cstmt.executeQuery();
             while (rs.next()) {
                 table.getItems().add(new Session(
                         rs.getInt("id"),
                         rs.getDate("datum").toLocalDate(),
                         rs.getTime("vreme_pocetka").toLocalTime(),
                         rs.getString("client_name"),
-                        rs.getInt("trajanje")
+                        rs.getInt("trajanje"),
+                        rs.getDouble("cena_po_satu")
                 ));
             }
         } catch (SQLException ex) {
@@ -153,27 +149,19 @@ public class SessionsPane extends VBox {
         notesArea.getStyleClass().add("text-area");
         Button submitButton = new Button("Zakaži");
         submitButton.getStyleClass().add("button");
+        submitButton.setDisable("kandidat".equals(user.getTip())); // Initially disabled for kandidat
 
-        ComboBox<String> supervisorCombo = null;
+        TextField supervisorField;
         if ("kandidat".equals(user.getTip())) {
             Label supervisorLabel = new Label("Supervizor:");
             supervisorLabel.getStyleClass().add("label");
-            supervisorCombo = new ComboBox<>();
-            supervisorCombo.getStyleClass().add("combo-box");
-            try (Connection conn = DatabaseUtil.getConnection()) {
-                PreparedStatement pstmt = conn.prepareStatement(
-                        "SELECT id, CONCAT(ime, ' ', prezime) AS name FROM Terapeut WHERE tip = 'sertifikovani'"
-                );
-                ResultSet rs = pstmt.executeQuery();
-                while (rs.next()) {
-                    supervisorCombo.getItems().add(rs.getString("name"));
-                }
-            } catch (SQLException ex) {
-                Alert alert = new Alert(Alert.AlertType.ERROR, "Greška pri učitavanju supervizora: " + ex.getMessage());
-                alert.showAndWait();
-            }
+            supervisorField = new TextField();
+            supervisorField.setEditable(false);
+            supervisorField.getStyleClass().add("text-field");
             form.add(supervisorLabel, 0, 6);
-            form.add(supervisorCombo, 1, 6);
+            form.add(supervisorField, 1, 6);
+        } else {
+            supervisorField = null;
         }
 
         form.add(clientLabel, 0, 0);
@@ -188,45 +176,164 @@ public class SessionsPane extends VBox {
         form.add(priceField, 1, 4);
         form.add(notesLabel, 0, 5);
         form.add(notesArea, 1, 5);
-        form.add(submitButton, 1, supervisorCombo != null ? 7 : 6);
+        form.add(submitButton, 1, supervisorField != null ? 7 : 6);
 
         try (Connection conn = DatabaseUtil.getConnection()) {
-            PreparedStatement pstmt = conn.prepareStatement("SELECT id, CONCAT(ime, ' ', prezime) AS name FROM Klijent");
-            ResultSet rs = pstmt.executeQuery();
+            CallableStatement cstmt = conn.prepareCall("{CALL GetAllClients()}");
+            ResultSet rs = cstmt.executeQuery();
             while (rs.next()) {
                 clientCombo.getItems().add(rs.getString("name"));
             }
         } catch (SQLException ex) {
             Alert alert = new Alert(Alert.AlertType.ERROR, "Greška pri učitavanju klijenata: " + ex.getMessage());
             alert.showAndWait();
-            /// sdafsdfsfgdgsdfgsdf
         }
 
-        final ComboBox<String> finalSupervisorCombo = supervisorCombo;
+        // Update priceField based on client selection and duration
+        clientCombo.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                try (Connection conn = DatabaseUtil.getConnection()) {
+                    int clientId = getClientId(newVal, conn);
+                    CallableStatement checkStmt = conn.prepareCall("{CALL CheckClientSessionCount(?, ?)}");
+                    checkStmt.setInt(1, clientId);
+                    checkStmt.registerOutParameter(2, Types.INTEGER);
+                    checkStmt.execute();
+                    int brojSeansi = checkStmt.getInt(2);
+                    int duration = durationField.getText().isEmpty() ? 60 : Integer.parseInt(durationField.getText());
+                    if (brojSeansi == 0 && duration <= 60) {
+                        priceField.setText("0.00");
+                        priceField.setDisable(true);
+                    } else {
+                        priceField.setText("5000.00");
+                        priceField.setDisable(false);
+                    }
+                } catch (SQLException | NumberFormatException ex) {
+                    Alert alert = new Alert(Alert.AlertType.ERROR, "Greška pri proveri klijenta: " + ex.getMessage());
+                    alert.showAndWait();
+                }
+            }
+        });
+
+        // Update priceField when duration changes
+        durationField.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null && !newVal.isEmpty() && clientCombo.getValue() != null) {
+                try (Connection conn = DatabaseUtil.getConnection()) {
+                    int clientId = getClientId(clientCombo.getValue(), conn);
+                    CallableStatement checkStmt = conn.prepareCall("{CALL CheckClientSessionCount(?, ?)}");
+                    checkStmt.setInt(1, clientId);
+                    checkStmt.registerOutParameter(2, Types.INTEGER);
+                    checkStmt.execute();
+                    int brojSeansi = checkStmt.getInt(2);
+                    int duration = Integer.parseInt(newVal);
+                    if (brojSeansi == 0 && duration <= 60) {
+                        priceField.setText("0.00");
+                        priceField.setDisable(true);
+                    } else {
+                        priceField.setText("5000.00");
+                        priceField.setDisable(false);
+                    }
+                } catch (SQLException | NumberFormatException ex) {
+                    Alert alert = new Alert(Alert.AlertType.ERROR, "Greška pri proveri klijenta: " + ex.getMessage());
+                    alert.showAndWait();
+                }
+            }
+        });
+
+        // Update supervisorField and submitButton when date or time changes (for kandidat)
+        if ("kandidat".equals(user.getTip())) {
+            Runnable updateSupervisor = () -> {
+                if (datePicker.getValue() != null && timeField.getText().matches("\\d{2}:\\d{2}")) {
+                    try (Connection conn = DatabaseUtil.getConnection()) {
+                        CallableStatement cstmt = conn.prepareCall("{CALL GetActiveSupervisor(?, ?, ?, ?, ?)}");
+                        cstmt.setInt(1, user.getId());
+                        cstmt.setDate(2, Date.valueOf(datePicker.getValue()));
+                        cstmt.setTime(3, Time.valueOf(timeField.getText() + ":00"));
+                        cstmt.registerOutParameter(4, Types.INTEGER);
+                        cstmt.registerOutParameter(5, Types.VARCHAR);
+                        cstmt.execute();
+                        int supervisorId = cstmt.getInt(4);
+                        String supervisorName = cstmt.getString(5);
+                        if (supervisorId == 0) {
+                            supervisorField.setText("Nema aktivnog supervizora");
+                            supervisorField.getStyleClass().add("text-field-error");
+                            submitButton.setDisable(true);
+                            Alert alert = new Alert(Alert.AlertType.WARNING, "Nema aktivnog supervizora za izabrani datum i vreme. Izaberite drugo vreme.");
+                            alert.showAndWait();
+                        } else {
+                            supervisorField.setText(supervisorName);
+                            supervisorField.getStyleClass().remove("text-field-error");
+                            submitButton.setDisable(false);
+                        }
+                    } catch (SQLException ex) {
+                        supervisorField.setText("Greška pri učitavanju supervizora");
+                        supervisorField.getStyleClass().add("text-field-error");
+                        submitButton.setDisable(true);
+                        Alert alert = new Alert(Alert.AlertType.ERROR, "Greška pri učitavanju supervizora: " + ex.getMessage());
+                        alert.showAndWait();
+                    }
+                } else {
+                    supervisorField.setText("");
+                    supervisorField.getStyleClass().remove("text-field-error");
+                    submitButton.setDisable(true);
+                }
+            };
+
+            datePicker.valueProperty().addListener((obs, oldVal, newVal) -> updateSupervisor.run());
+            timeField.textProperty().addListener((obs, oldVal, newVal) -> updateSupervisor.run());
+        }
+
         submitButton.setOnAction(e -> {
             try (Connection conn = DatabaseUtil.getConnection()) {
                 int clientId = getClientId(clientCombo.getValue(), conn);
-                PreparedStatement checkStmt = conn.prepareStatement("SELECT COUNT(*) FROM Sesija WHERE klijent_id = ?");
-                checkStmt.setInt(1, clientId);
-                ResultSet rs = checkStmt.executeQuery();
-                double cost = 0.0;
-                if (rs.next() && rs.getInt(1) > 0) {
-                    cost = Double.parseDouble(priceField.getText()) * (Integer.parseInt(durationField.getText()) / 60.0);
+                int duration = Integer.parseInt(durationField.getText());
+                double cenaPoSatu = Double.parseDouble(priceField.getText());
+
+                // Validate inputs
+                if (clientCombo.getValue() == null || datePicker.getValue() == null || timeField.getText().isEmpty() || duration <= 0) {
+                    Alert alert = new Alert(Alert.AlertType.ERROR, "Popunite sva obavezna polja!");
+                    alert.showAndWait();
+                    return;
+                }
+                if (!timeField.getText().matches("\\d{2}:\\d{2}")) {
+                    Alert alert = new Alert(Alert.AlertType.ERROR, "Vreme mora biti u formatu HH:MM!");
+                    alert.showAndWait();
+                    return;
+                }
+                if (cenaPoSatu < 0) {
+                    Alert alert = new Alert(Alert.AlertType.ERROR, "Cena ne može biti negativna!");
+                    alert.showAndWait();
+                    return;
+                }
+                // For kandidat, check if supervisor exists
+                if ("kandidat".equals(user.getTip())) {
+                    CallableStatement cstmt = conn.prepareCall("{CALL GetActiveSupervisor(?, ?, ?, ?, ?)}");
+                    cstmt.setInt(1, user.getId());
+                    cstmt.setDate(2, Date.valueOf(datePicker.getValue()));
+                    cstmt.setTime(3, Time.valueOf(timeField.getText() + ":00"));
+                    cstmt.registerOutParameter(4, Types.INTEGER);
+                    cstmt.registerOutParameter(5, Types.VARCHAR);
+                    cstmt.execute();
+                    int supervisorId = cstmt.getInt(4);
+                    if (supervisorId == 0) {
+                        Alert alert = new Alert(Alert.AlertType.ERROR, "Nema aktivnog supervizora za izabrani datum i vreme!");
+                        alert.showAndWait();
+                        return;
+                    }
                 }
 
-                CallableStatement cstmt = conn.prepareCall("{CALL DodajSesiju(?, ?, ?, ?, ?, ?, ?, ?)}");
+                CallableStatement cstmt = conn.prepareCall("{CALL DodajSesiju(?, ?, ?, ?, ?, ?, ?)}");
                 cstmt.setInt(1, clientId);
                 cstmt.setInt(2, user.getId());
-                cstmt.setDate(3, datePicker.getValue() != null ? Date.valueOf(datePicker.getValue()) : null);
+                cstmt.setDate(3, Date.valueOf(datePicker.getValue()));
                 cstmt.setTime(4, Time.valueOf(timeField.getText() + ":00"));
-                cstmt.setInt(5, Integer.parseInt(durationField.getText()));
+                cstmt.setInt(5, duration);
                 cstmt.setString(6, notesArea.getText());
-                cstmt.setDouble(7, cost);
-                cstmt.setInt(8, "kandidat".equals(user.getTip()) && finalSupervisorCombo != null && finalSupervisorCombo.getValue() != null ? getSupervisorId(finalSupervisorCombo.getValue(), conn) : 0);
+                cstmt.setDouble(7, cenaPoSatu);
                 cstmt.execute();
 
                 Alert alert = new Alert(Alert.AlertType.INFORMATION, "Sesija zakazana");
                 alert.showAndWait();
+                loadFutureSessions((TableView<Session>) ((TabPane) getChildren().get(0)).getTabs().get(1).getContent());
             } catch (SQLException | NumberFormatException ex) {
                 Alert alert = new Alert(Alert.AlertType.ERROR, "Greška: " + ex.getMessage());
                 alert.showAndWait();
@@ -303,12 +410,9 @@ public class SessionsPane extends VBox {
         form.add(submitButton, 1, 10);
 
         try (Connection conn = DatabaseUtil.getConnection()) {
-            PreparedStatement pstmt = conn.prepareStatement(
-                    "SELECT s.id, CONCAT(k.ime, ' ', k.prezime, ' - ', s.datum) AS session_info " +
-                            "FROM Sesija s JOIN Klijent k ON s.klijent_id = k.id WHERE s.terapeut_id = ?"
-            );
-            pstmt.setInt(1, user.getId());
-            ResultSet rs = pstmt.executeQuery();
+            CallableStatement cstmt = conn.prepareCall("{CALL GetSessionsByTherapist(?)}");
+            cstmt.setInt(1, user.getId());
+            ResultSet rs = cstmt.executeQuery();
             while (rs.next()) {
                 sessionCombo.getItems().add(rs.getString("session_info"));
             }
@@ -321,16 +425,13 @@ public class SessionsPane extends VBox {
             if (newVal != null) {
                 try (Connection conn = DatabaseUtil.getConnection()) {
                     int sessionId = getSessionId(newVal, conn);
-                    PreparedStatement notesStmt = conn.prepareStatement("SELECT beleske FROM Sesija WHERE id = ?");
+                    CallableStatement notesStmt = conn.prepareCall("{CALL GetSessionNotes(?, ?)}");
                     notesStmt.setInt(1, sessionId);
-                    ResultSet notesRs = notesStmt.executeQuery();
-                    if (notesRs.next()) {
-                        notesArea.setText(notesRs.getString("beleske"));
-                    } else {
-                        notesArea.setText("");
-                    }
+                    notesStmt.registerOutParameter(2, Types.VARCHAR);
+                    notesStmt.execute();
+                    notesArea.setText(notesStmt.getString(2) != null ? notesStmt.getString(2) : "");
 
-                    PreparedStatement testStmt = conn.prepareStatement("SELECT * FROM Test_rezultat WHERE sesija_id = ?");
+                    CallableStatement testStmt = conn.prepareCall("{CALL GetTestResult(?)}");
                     testStmt.setInt(1, sessionId);
                     ResultSet testRs = testStmt.executeQuery();
                     if (testRs.next()) {
@@ -347,7 +448,7 @@ public class SessionsPane extends VBox {
                         testResultArea.setText("");
                     }
 
-                    PreparedStatement disclosureStmt = conn.prepareStatement("SELECT * FROM Objava_podataka WHERE sesija_id = ?");
+                    CallableStatement disclosureStmt = conn.prepareCall("{CALL GetDisclosureData(?)}");
                     disclosureStmt.setInt(1, sessionId);
                     ResultSet disclosureRs = disclosureStmt.executeQuery();
                     if (disclosureRs.next()) {
@@ -369,43 +470,34 @@ public class SessionsPane extends VBox {
         submitButton.setOnAction(e -> {
             try (Connection conn = DatabaseUtil.getConnection()) {
                 int sessionId = getSessionId(sessionCombo.getValue(), conn);
-                PreparedStatement notesStmt = conn.prepareStatement("UPDATE Sesija SET beleske = ? WHERE id = ?");
-                notesStmt.setString(1, notesArea.getText());
-                notesStmt.setInt(2, sessionId);
-                notesStmt.executeUpdate();
+                CallableStatement notesStmt = conn.prepareCall("{CALL UpdateSessionNotes(?, ?)}");
+                notesStmt.setInt(1, sessionId);
+                notesStmt.setString(2, notesArea.getText());
+                notesStmt.execute();
 
                 if (testConductedCheck.isSelected()) {
-                    PreparedStatement testStmt = conn.prepareStatement(
-                            "INSERT INTO Test_rezultat (sesija_id, test_id, rezultat) VALUES (?, ?, ?) " +
-                                    "ON DUPLICATE KEY UPDATE rezultat = ?"
-                    );
+                    CallableStatement testStmt = conn.prepareCall("{CALL UpsertTestResult(?, ?, ?)}");
                     int testId = 1; // Placeholder, replace with actual logic
                     testStmt.setInt(1, sessionId);
                     testStmt.setInt(2, testId);
                     testStmt.setString(3, testResultArea.getText());
-                    testStmt.setString(4, testResultArea.getText());
-                    testStmt.executeUpdate();
+                    testStmt.execute();
                 } else {
-                    PreparedStatement deleteTestStmt = conn.prepareStatement("DELETE FROM Test_rezultat WHERE sesija_id = ?");
+                    CallableStatement deleteTestStmt = conn.prepareCall("{CALL DeleteTestResult(?)}");
                     deleteTestStmt.setInt(1, sessionId);
-                    deleteTestStmt.executeUpdate();
+                    deleteTestStmt.execute();
                 }
 
                 if (discloseCheck.isSelected()) {
-                    PreparedStatement disclosureStmt = conn.prepareStatement(
-                            "INSERT INTO Objava_podataka (sesija_id, svrha, opis) VALUES (?, ?, ?) " +
-                                    "ON DUPLICATE KEY UPDATE svrha = ?, opis = ?"
-                    );
+                    CallableStatement disclosureStmt = conn.prepareCall("{CALL UpsertDisclosureData(?, ?, ?)}");
                     disclosureStmt.setInt(1, sessionId);
                     disclosureStmt.setString(2, reasonField.getText());
                     disclosureStmt.setString(3, disclosedToField.getText());
-                    disclosureStmt.setString(4, reasonField.getText());
-                    disclosureStmt.setString(5, disclosedToField.getText());
-                    disclosureStmt.executeUpdate();
+                    disclosureStmt.execute();
                 } else {
-                    PreparedStatement deleteDisclosureStmt = conn.prepareStatement("DELETE FROM Objava_podataka WHERE sesija_id = ?");
+                    CallableStatement deleteDisclosureStmt = conn.prepareCall("{CALL DeleteDisclosureData(?)}");
                     deleteDisclosureStmt.setInt(1, sessionId);
-                    deleteDisclosureStmt.executeUpdate();
+                    deleteDisclosureStmt.execute();
                 }
 
                 Alert alert = new Alert(Alert.AlertType.INFORMATION, "Podaci sačuvani");
@@ -420,35 +512,26 @@ public class SessionsPane extends VBox {
     }
 
     private int getClientId(String clientName, Connection conn) throws SQLException {
-        PreparedStatement pstmt = conn.prepareStatement("SELECT id FROM Klijent WHERE CONCAT(ime, ' ', prezime) = ?");
-        pstmt.setString(1, clientName);
-        ResultSet rs = pstmt.executeQuery();
-        if (rs.next()) {
-            return rs.getInt("id");
+        CallableStatement cstmt = conn.prepareCall("{CALL GetClientIdByName(?, ?)}");
+        cstmt.setString(1, clientName);
+        cstmt.registerOutParameter(2, Types.INTEGER);
+        cstmt.execute();
+        int clientId = cstmt.getInt(2);
+        if (clientId == 0) {
+            throw new SQLException("Klijent nije pronađen");
         }
-        throw new SQLException("Klijent nije pronađen");
+        return clientId;
     }
 
     private int getSessionId(String sessionInfo, Connection conn) throws SQLException {
-        PreparedStatement pstmt = conn.prepareStatement(
-                "SELECT s.id FROM Sesija s JOIN Klijent k ON s.klijent_id = k.id " +
-                        "WHERE CONCAT(k.ime, ' ', k.prezime, ' - ', s.datum) = ?"
-        );
-        pstmt.setString(1, sessionInfo);
-        ResultSet rs = pstmt.executeQuery();
-        if (rs.next()) {
-            return rs.getInt("id");
+        CallableStatement cstmt = conn.prepareCall("{CALL GetSessionIdByInfo(?, ?)}");
+        cstmt.setString(1, sessionInfo);
+        cstmt.registerOutParameter(2, Types.INTEGER);
+        cstmt.execute();
+        int sessionId = cstmt.getInt(2);
+        if (sessionId == 0) {
+            throw new SQLException("Sesija nije pronađena");
         }
-        throw new SQLException("Sesija nije pronađena");
-    }
-
-    private int getSupervisorId(String supervisorName, Connection conn) throws SQLException {
-        PreparedStatement pstmt = conn.prepareStatement("SELECT id FROM Terapeut WHERE CONCAT(ime, ' ', prezime) = ?");
-        pstmt.setString(1, supervisorName);
-        ResultSet rs = pstmt.executeQuery();
-        if (rs.next()) {
-            return rs.getInt("id");
-        }
-        throw new SQLException("Supervizor nije pronađen");
+        return sessionId;
     }
 }

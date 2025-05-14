@@ -9,13 +9,15 @@ public class Session {
     private final LocalTime time;
     private final String clientName;
     private final int duration;
+    private final double cenaPoSatu;
 
-    public Session(int id, LocalDate date, LocalTime time, String clientName, int duration) {
+    public Session(int id, LocalDate date, LocalTime time, String clientName, int duration, double cenaPoSatu) {
         this.id = id;
         this.date = date;
         this.time = time;
         this.clientName = clientName;
         this.duration = duration;
+        this.cenaPoSatu = cenaPoSatu;
     }
 
     public int getId() {
@@ -36,5 +38,9 @@ public class Session {
 
     public int getDuration() {
         return duration;
+    }
+
+    public double getCenaPoSatu() {
+        return cenaPoSatu;
     }
 }

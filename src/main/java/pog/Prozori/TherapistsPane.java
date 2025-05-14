@@ -39,8 +39,12 @@ public class TherapistsPane extends VBox {
         tipColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getTip()));
         TableColumn<User, String> fakultetColumn = new TableColumn<>("Fakultet");
         fakultetColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getFakultetNaziv()));
+        TableColumn<User, String> stepenColumn = new TableColumn<>("Stepen");
+        stepenColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getStepen()));
+        TableColumn<User, String> centarColumn = new TableColumn<>("Centar za obuku");
+        centarColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getCentarNaziv()));
 
-        tableView.getColumns().addAll(idColumn, nameColumn, surnameColumn, emailColumn, tipColumn, fakultetColumn);
+        tableView.getColumns().addAll(idColumn, nameColumn, surnameColumn, emailColumn, tipColumn, fakultetColumn, stepenColumn, centarColumn);
 
         Button refreshButton = new Button("Osveži");
         refreshButton.getStyleClass().add("button");
@@ -55,8 +59,13 @@ public class TherapistsPane extends VBox {
         tableView.getItems().clear();
         try (Connection conn = DatabaseUtil.getConnection()) {
             PreparedStatement pstmt = conn.prepareStatement(
-                    "SELECT t.id, t.ime, t.prezime, t.email, t.tip, f.naziv AS fakultet_naziv " +
-                            "FROM Terapeut t JOIN Fakultet f ON t.fakultet_id = f.id"
+                    "SELECT t.id, t.ime, t.prezime, t.email, t.tip, " +
+                            "COALESCE(k.stepen, t.stepen) AS stepen, " +
+                            "f.naziv AS fakultet_naziv, c.naziv AS centar_naziv " +
+                            "FROM Terapeut t " +
+                            "LEFT JOIN Kandidat k ON t.id = k.terapeut_id " +
+                            "JOIN Fakultet f ON COALESCE(k.fakultet_id, t.fakultet_id) = f.id " +
+                            "LEFT JOIN Centar_obuka c ON COALESCE(k.Centar_obuka_id, t.Centar_obuka_id) = c.id"
             );
             ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
@@ -65,9 +74,11 @@ public class TherapistsPane extends VBox {
                         rs.getString("ime"),
                         rs.getString("prezime"),
                         rs.getString("email"),
-                        rs.getString("tip")
+                        rs.getString("tip"),
+                        rs.getString("fakultet_naziv"),
+                        rs.getString("stepen"),
+                        rs.getString("centar_naziv") != null ? rs.getString("centar_naziv") : "Nije dodeljen"
                 );
-                therapist.setFakultetNaziv(rs.getString("fakultet_naziv"));
                 tableView.getItems().add(therapist);
             }
         } catch (SQLException ex) {

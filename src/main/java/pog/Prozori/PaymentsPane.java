@@ -120,14 +120,6 @@ public class PaymentsPane extends VBox {
                 return;
             }
 
-            // Check rates exist
-            CallableStatement rateStmt = conn.prepareCall("{CALL CheckRateCount(?, ?)}");
-            rateStmt.setInt(1, user.getId());
-            rateStmt.registerOutParameter(2, Types.INTEGER);
-            rateStmt.execute();
-            int rateCount = rateStmt.getInt(2);
-            System.out.println("Found " + rateCount + " rates for therapist ID: " + user.getId());
-
             // Load client dues
             CallableStatement cstmt = conn.prepareCall("{CALL GetClientDuesByTherapist(?)}");
             cstmt.setInt(1, user.getId());
@@ -283,7 +275,6 @@ public class PaymentsPane extends VBox {
         }
         return sessionId;
     }
-
 
     public static class Payment {
         private final int id;
